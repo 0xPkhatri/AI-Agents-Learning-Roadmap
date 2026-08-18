@@ -51,6 +51,6 @@ A **workflow** follows mostly predetermined execution paths. An **agent** dynami
 
 ## Current study
 
-**Topic 02 — Workflows vs Autonomous Agents**
+**Topic 03 — Anatomy of an Agent**
 
-Continue with [notes/02-workflows-vs-autonomous-agents.md](notes/02-workflows-vs-autonomous-agents.md). Topic 01 remains in progress until its exercises are completed.
+Continue with [notes/03-anatomy-of-an-agent.md](notes/03-anatomy-of-an-agent.md). Topics 01–02 remain in progress until their exercises are completed.

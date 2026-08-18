@@ -13,7 +13,7 @@
 
 - [~] 01 AI Agents: Mental Model and Terminology
 - [~] 02 Workflows vs Autonomous Agents
-- [ ] 03 Anatomy of an Agent
+- [~] 03 Anatomy of an Agent
 
 ### Phase 2 — LLM Application Fundamentals
 
@@ -119,3 +119,4 @@
 | 2026-08-15 | Topic 01 | Added foundational component definitions, control loop, state/memory distinction, evaluation criteria, and analogy | Refine agent definition and complete classification exercise | `notes/01-ai-agent-mental-model.md` |
 | 2026-08-15 | Topic 01 | Condensed the ChatGPT lesson into a detailed guide covering system types, agent vocabulary, autonomy, lifecycle, architecture boundaries, examples, and exercises | Complete the laptop architecture exercise without the answer key | `notes/01-ai-agent-mental-model-study-guide.md` |
 | 2026-08-18 | Topic 02 | Created notes on control flow, workflow types, autonomy levels, decision boundaries, hybrid production patterns, and architecture selection | Complete the API incident architecture exercise | `notes/02-workflows-vs-autonomous-agents.md` |
+| 2026-08-19 | Topic 03 | Created notes on agent components, model/runtime boundaries, state, the control loop, stop conditions, execution traces, and debugging | Complete the calculator/search design and pseudocode exercises | `notes/03-anatomy-of-an-agent.md` |

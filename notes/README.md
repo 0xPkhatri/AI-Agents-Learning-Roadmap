@@ -14,3 +14,4 @@ Create each file from [_template.md](_template.md) when the topic begins. Keep c
 - [01 — AI Agents: Mental Model and Terminology](01-ai-agent-mental-model.md)
 - [01 — AI Agents: Detailed Study Guide](01-ai-agent-mental-model-study-guide.md)
 - [02 — Workflows vs Autonomous Agents](02-workflows-vs-autonomous-agents.md)
+- [03 — Anatomy of an Agent](03-anatomy-of-an-agent.md)
