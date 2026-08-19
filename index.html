@@ -847,24 +847,37 @@
     </div>
 
     <script>
+      // ------------------------------------------------------------
+      // GitHub Pages configuration
+      // ------------------------------------------------------------
+      // Recommended: set these values to your public GitHub repository.
+      // Example:
+      //   owner: "octocat"
+      //   repo: "agent-notes"
+      //
+      // On normal username.github.io Pages URLs, owner/repo can also be
+      // auto-detected while these placeholders remain. For custom domains,
+      // fill them in explicitly. If your branch is not "main", change it.
+      const GITHUB_REPO = {
+        owner: "YOUR_GITHUB_USERNAME",
+        repo: "YOUR_REPOSITORY_NAME",
+        branch: "main",
+      };
+
+      // Individual Markdown files that should always be loaded.
       const BUNDLED_FILES = [
         "README.md",
-        "dump.md",
-        "dump/1_2.md",
-        "dump/1_3.md",
         "ROADMAP.md",
         "PROGRESS.md",
         "SOURCES.md",
         "INBOX.md",
-        "notes/00-roadmap-review.md",
-        "notes/01-ai-agent-basics-quick-notes.md",
-        "notes/01-ai-agent-mental-model.md",
-      "notes/01-ai-agent-mental-model-study-guide.md",
-      "notes/02-workflows-vs-autonomous-agents.md",
-      "notes/03-anatomy-of-an-agent.md",
-      "notes/_template.md",
-        "projects/README.md",
       ];
+
+      // Every .md file inside these folders (including subfolders) is
+      // discovered automatically:
+      //   localhost    -> scans Python http.server directory listings
+      //   GitHub Pages -> scans the public GitHub repository tree
+      const BUNDLED_FOLDERS = ["dump", "notes", "projects"];
 
       const docs = new Map();
       let activePath = "";
@@ -1095,24 +1108,281 @@
         docs.set(path, { path, text, origin, title: titleFrom(path, text) });
       }
 
+      function normalizeFolder(folder) {
+        return folder.replace(/^\/+|\/+$/g, "");
+      }
+
+      function normalizeRepoPath(path) {
+        return path
+          .replace(/^[.\/]+/, "")
+          .replace(/\\/g, "/")
+          .replace(/\/{2,}/g, "/");
+      }
+
+      function belongsToBundledFolder(path) {
+        const cleanPath = normalizeRepoPath(path);
+        return BUNDLED_FOLDERS.some((folder) => {
+          const clean = normalizeFolder(folder);
+          return (
+            clean && (cleanPath === clean || cleanPath.startsWith(`${clean}/`))
+          );
+        });
+      }
+
+      function isLocalhost() {
+        return ["localhost", "127.0.0.1", "::1", "[::1]"].includes(
+          window.location.hostname,
+        );
+      }
+
+      // ------------------------------------------------------------
+      // LOCALHOST DISCOVERY
+      // ------------------------------------------------------------
+      // Python's built-in HTTP server exposes directory-index pages.
+      // We read those pages and recursively follow subdirectories.
+      // This means:
+      //
+      //   python3 -m http.server 8000
+      //
+      // can automatically discover dump/**/*.md, notes/**/*.md, etc.
+      async function discoverLocalFolder(folder) {
+        const root = normalizeFolder(folder);
+        if (!root) return [];
+
+        const markdownFiles = [];
+        const visited = new Set();
+
+        async function walk(relativeDir) {
+          const cleanDir = normalizeRepoPath(relativeDir).replace(/\/$/, "");
+          const directoryUrl = new URL(`./${cleanDir}/`, window.location.href);
+          const key = directoryUrl.href;
+
+          if (visited.has(key)) return;
+          visited.add(key);
+
+          const response = await fetch(directoryUrl, { cache: "no-store" });
+          if (!response.ok) {
+            throw new Error(`${cleanDir}/ returned ${response.status}`);
+          }
+
+          const html = await response.text();
+          const page = new DOMParser().parseFromString(html, "text/html");
+          const links = [...page.querySelectorAll("a[href]")];
+
+          // A real directory listing normally contains links for the files.
+          // If the server returned an index.html instead, do not accidentally
+          // crawl arbitrary links from that page.
+          const looksLikeDirectoryListing =
+            /directory listing/i.test(page.title) ||
+            links.some((link) => link.getAttribute("href") === "../") ||
+            links.some((link) =>
+              /\.md(?:$|[?#])/i.test(link.getAttribute("href") || ""),
+            );
+
+          if (!looksLikeDirectoryListing) {
+            throw new Error(
+              `${cleanDir}/ is not exposing a directory listing. ` +
+                "Use python3 -m http.server 8000 for automatic local scanning.",
+            );
+          }
+
+          for (const link of links) {
+            const rawHref = link.getAttribute("href") || "";
+            if (!rawHref || rawHref === "../" || rawHref.startsWith("?")) {
+              continue;
+            }
+
+            const target = new URL(rawHref, directoryUrl);
+
+            // Stay on this local server and inside the selected root folder.
+            if (target.origin !== window.location.origin) continue;
+
+            const basePath = new URL("./", window.location.href).pathname;
+            let relativePath = decodeURIComponent(target.pathname);
+            if (relativePath.startsWith(basePath)) {
+              relativePath = relativePath.slice(basePath.length);
+            } else {
+              relativePath = relativePath.replace(/^\/+/, "");
+            }
+
+            relativePath = normalizeRepoPath(relativePath);
+            if (
+              !(relativePath === root || relativePath.startsWith(`${root}/`))
+            ) {
+              continue;
+            }
+
+            if (rawHref.endsWith("/")) {
+              await walk(relativePath);
+            } else if (relativePath.toLowerCase().endsWith(".md")) {
+              markdownFiles.push(relativePath);
+            }
+          }
+        }
+
+        await walk(root);
+        return markdownFiles;
+      }
+
+      async function discoverLocalMarkdownFiles() {
+        const results = await Promise.allSettled(
+          BUNDLED_FOLDERS.map((folder) => discoverLocalFolder(folder)),
+        );
+
+        const files = [];
+        const errors = [];
+
+        results.forEach((result, index) => {
+          if (result.status === "fulfilled") {
+            files.push(...result.value);
+          } else {
+            errors.push(
+              `${BUNDLED_FOLDERS[index]}: ${result.reason?.message || result.reason}`,
+            );
+          }
+        });
+
+        if (errors.length) {
+          console.warn("Some local folders could not be scanned:", errors);
+        }
+
+        return [...new Set(files)];
+      }
+
+      // ------------------------------------------------------------
+      // GITHUB PAGES DISCOVERY
+      // ------------------------------------------------------------
+      function resolvedGitHubRepo() {
+        let { owner, repo, branch } = GITHUB_REPO;
+
+        const placeholderOwner = !owner || owner === "YOUR_GITHUB_USERNAME";
+        const placeholderRepo = !repo || repo === "YOUR_REPOSITORY_NAME";
+
+        // Auto-detect normal *.github.io Pages URLs when placeholders remain.
+        if (
+          (placeholderOwner || placeholderRepo) &&
+          /\.github\.io$/i.test(location.hostname)
+        ) {
+          const detectedOwner = location.hostname.replace(/\.github\.io$/i, "");
+          const firstPathPart = location.pathname.split("/").filter(Boolean)[0];
+
+          owner = placeholderOwner ? detectedOwner : owner;
+          repo = placeholderRepo
+            ? firstPathPart || `${detectedOwner}.github.io`
+            : repo;
+        }
+
+        return { owner, repo, branch: branch || "main" };
+      }
+
+      async function discoverGitHubMarkdownFiles() {
+        const { owner, repo, branch } = resolvedGitHubRepo();
+
+        if (
+          !owner ||
+          !repo ||
+          owner === "YOUR_GITHUB_USERNAME" ||
+          repo === "YOUR_REPOSITORY_NAME"
+        ) {
+          throw new Error(
+            "Set GITHUB_REPO.owner and GITHUB_REPO.repo for this GitHub Pages site",
+          );
+        }
+
+        const apiUrl =
+          `https://api.github.com/repos/${encodeURIComponent(owner)}/` +
+          `${encodeURIComponent(repo)}/git/trees/${encodeURIComponent(branch)}?recursive=1`;
+
+        const response = await fetch(apiUrl, {
+          headers: { Accept: "application/vnd.github+json" },
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          throw new Error(`GitHub API returned ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (!Array.isArray(data.tree)) {
+          throw new Error(
+            "GitHub API response did not contain a repository tree",
+          );
+        }
+
+        if (data.truncated) {
+          console.warn(
+            "GitHub returned a truncated repository tree. Some Markdown files may be missing.",
+          );
+        }
+
+        return data.tree
+          .filter(
+            (entry) =>
+              entry.type === "blob" &&
+              typeof entry.path === "string" &&
+              entry.path.toLowerCase().endsWith(".md") &&
+              belongsToBundledFolder(entry.path),
+          )
+          .map((entry) => normalizeRepoPath(entry.path));
+      }
+
+      async function getBundledFilePaths() {
+        let folderFiles = [];
+        const mode = isLocalhost() ? "local" : "github";
+
+        statusText.textContent = isLocalhost()
+          ? "Scanning local Markdown folders…"
+          : "Scanning GitHub Markdown folders…";
+
+        try {
+          folderFiles = isLocalhost()
+            ? await discoverLocalMarkdownFiles()
+            : await discoverGitHubMarkdownFiles();
+        } catch (error) {
+          console.error("Could not discover Markdown folders:", error);
+          statusText.textContent =
+            "Folder discovery failed; loading individual Markdown files";
+        }
+
+        console.info(
+          `Markdown discovery mode: ${mode}; found ${folderFiles.length} folder file(s)`,
+        );
+
+        return [
+          ...new Set([...BUNDLED_FILES.map(normalizeRepoPath), ...folderFiles]),
+        ];
+      }
+
       async function loadBundled() {
         let loaded = 0;
+        const paths = await getBundledFilePaths();
+
         await Promise.all(
-          BUNDLED_FILES.map(async (path) => {
+          paths.map(async (path) => {
             try {
-              const response = await fetch(path, { cache: "no-store" });
+              // Relative URL is important for GitHub project Pages such as:
+              // https://username.github.io/repository-name/
+              const response = await fetch(`./${path}`, { cache: "no-store" });
               if (!response.ok) throw new Error(String(response.status));
               addDoc(path, await response.text());
               loaded++;
-            } catch (_) {}
+            } catch (error) {
+              console.warn(`Could not load ${path}:`, error);
+            }
           }),
         );
 
         renderLibrary();
         statusText.textContent = loaded
-          ? `${loaded} workspace notes loaded`
-          : "Open files or a folder to begin";
-        if (docs.has("README.md")) openDoc("README.md");
+          ? `${loaded} workspace note${loaded === 1 ? "" : "s"} loaded`
+          : "No workspace notes could be loaded";
+
+        if (docs.has("README.md")) {
+          openDoc("README.md");
+        } else if (paths.length && docs.has(paths[0])) {
+          openDoc(paths[0]);
+        }
       }
 
       function renderLibrary(query = "") {
