@@ -51,6 +51,6 @@ A **workflow** follows mostly predetermined execution paths. An **agent** dynami
 
 ## Current study
 
-**Topic 03 — Anatomy of an Agent**
+**Topic 04 — LLM APIs for Agent Development**
 
-Continue with [notes/03-anatomy-of-an-agent.md](notes/03-anatomy-of-an-agent.md). Topics 01–02 remain in progress until their exercises are completed.
+Continue with [notes/04-llm-apis-for-agent-development.md](notes/04-llm-apis-for-agent-development.md). Topics 01–03 remain in progress until their exercises are completed.

@@ -17,7 +17,7 @@
 
 ### Phase 2 — LLM Application Fundamentals
 
-- [ ] 04 LLM APIs for Agent Development
+- [~] 04 LLM APIs for Agent Development
 - [ ] 05 System Prompts and Instruction Design
 - [ ] 06 Structured Outputs and Schemas
 - [ ] 07 Function / Tool Calling
@@ -120,3 +120,4 @@
 | 2026-08-15 | Topic 01 | Condensed the ChatGPT lesson into a detailed guide covering system types, agent vocabulary, autonomy, lifecycle, architecture boundaries, examples, and exercises | Complete the laptop architecture exercise without the answer key | `notes/01-ai-agent-mental-model-study-guide.md` |
 | 2026-08-18 | Topic 02 | Created notes on control flow, workflow types, autonomy levels, decision boundaries, hybrid production patterns, and architecture selection | Complete the API incident architecture exercise | `notes/02-workflows-vs-autonomous-agents.md` |
 | 2026-08-19 | Topic 03 | Created notes on agent components, model/runtime boundaries, state, the control loop, stop conditions, execution traces, and debugging | Complete the calculator/search design and pseudocode exercises | `notes/03-anatomy-of-an-agent.md` |
+| 2026-08-19 | Topic 04 | Created notes on LLM API requests, context, messages, tokens, streaming, async execution, errors, observability, and the CLI assignment | Build and test the configurable CLI assistant | `notes/04-llm-apis-for-agent-development.md` |
